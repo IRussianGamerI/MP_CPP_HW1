@@ -23,10 +23,10 @@ namespace smart_pointer {
 
         // Construct a shared_ptr that manages the given object or array
         template<typename Y>
-        requires (std::is_array_v<T> && (std::is_convertible_v<Y(*)[], T *> ||
-                                         std::is_convertible_v<Y(*)[sizeof(T) /
-                                                                    sizeof(std::remove_extent_t<T>)], T *>) ||
-                  !std::is_array_v<T> && std::is_convertible_v<Y *, T *>)
+            requires (std::is_array_v<T> && (std::is_convertible_v<Y(*)[], T *> ||
+                                            std::is_convertible_v<Y(*)[sizeof(T) /
+                                                                        sizeof(std::remove_extent_t<T>)], T *>) ||
+                     !std::is_array_v<T> && std::is_convertible_v<Y *, T *>)
         explicit shared_ptr(Y *obj);
 
         // Copy constructor
@@ -136,10 +136,10 @@ namespace smart_pointer {
 
     template<typename T>
     template<typename Y>
-    requires (std::is_array_v<T> && (std::is_convertible_v<Y(*)[], T *> ||
-                                     std::is_convertible_v<Y(*)[sizeof(T) /
-                                                                sizeof(std::remove_extent_t<T>)], T *>) ||
-              !std::is_array_v<T> && std::is_convertible_v<Y *, T *>)
+        requires (std::is_array_v<T> && (std::is_convertible_v<Y(*)[], T *> ||
+                                        std::is_convertible_v<Y(*)[sizeof(T) /
+                                                                    sizeof(std::remove_extent_t<T>)], T *>) ||
+                 !std::is_array_v<T> && std::is_convertible_v<Y *, T *>)
     shared_ptr<T>::shared_ptr(Y *obj) : obj_(obj), ref_count_(new std::size_t(1)) {}
 
     template<typename T>
@@ -171,8 +171,12 @@ namespace smart_pointer {
         if (this != &other) {
             release();
             obj_ = other.obj_;
-            ref_count_ = other.ref_count_;
-            ++*ref_count_;
+            if (obj_) {
+                ref_count_ = other.ref_count_;
+                ++*ref_count_;
+            } else {
+                ref_count_ = new std::size_t(0);
+            }
         }
         return *this;
     }
@@ -248,18 +252,22 @@ namespace smart_pointer {
     }
 
     template<typename T>
-    requires (std::is_array_v<T> && !is_type_complete_v<T> && std::is_array_v<std::remove_extent_t<T>>)
+        requires (std::is_array_v<T> && !is_type_complete_v<T> && std::is_array_v<std::remove_extent_t<T>>)
     shared_ptr<T> make_shared(std::size_t N, const std::remove_extent_t<T> &u) {
         auto array = new std::remove_extent_t<T>[N];
         using elementary_type = std::remove_all_extents_t<T>;
         for (std::size_t i = 0; i < N; ++i) {
-            memcpy(&array[i], &u, sizeof(std::remove_extent_t<T>) / sizeof(elementary_type));
+            auto array_1d = reinterpret_cast<elementary_type *>(array[i]);
+            for (std::size_t j = 0; j < sizeof(std::remove_extent_t<T>) / sizeof(elementary_type); ++j) {
+                auto u_1d = reinterpret_cast<const elementary_type *>(u);
+                array_1d[j] = u_1d[j];
+            }
         }
         return shared_ptr<T>(array);
     }
 
     template<typename T>
-    requires (std::is_array_v<T> && !is_type_complete_v<T> && !std::is_array_v<std::remove_extent_t<T>>)
+        requires (std::is_array_v<T> && !is_type_complete_v<T> && !std::is_array_v<std::remove_extent_t<T>>)
     shared_ptr<T> make_shared(std::size_t N, const std::remove_extent_t<T> &u) {
         auto array = new std::remove_extent_t<T>[N];
         for (std::size_t i = 0; i < N; ++i) {
@@ -269,18 +277,22 @@ namespace smart_pointer {
     }
 
     template<typename T>
-    requires std::is_array_v<T> && is_type_complete_v<T> && std::is_array_v<std::remove_extent_t<T>>
+        requires std::is_array_v<T> && is_type_complete_v<T> && std::is_array_v<std::remove_extent_t<T>>
     shared_ptr<T> make_shared(const std::remove_extent_t<T> &u) {
         auto array = shared_ptr<T>(new T);
         using elementary_type = std::remove_all_extents_t<T>;
         for (std::size_t i = 0; i < std::extent_v<T>; ++i) {
-            memcpy(&array[i], &u, sizeof(std::remove_extent_t<T>) / sizeof(elementary_type));
+            auto array_1d = reinterpret_cast<elementary_type *>(array[i]);
+            for (std::size_t j = 0; j < sizeof(std::remove_extent_t<T>) / sizeof(elementary_type); ++j) {
+                auto u_1d = reinterpret_cast<const elementary_type *>(u);
+                array_1d[j] = u_1d[j];
+            }
         }
         return array;
     }
 
     template<typename T>
-    requires (std::is_array_v<T> && is_type_complete_v<T> && !std::is_array_v<std::remove_extent_t<T>>)
+        requires (std::is_array_v<T> && is_type_complete_v<T> && !std::is_array_v<std::remove_extent_t<T>>)
     shared_ptr<T> make_shared(const std::remove_extent_t<T> &u) {
         auto array = shared_ptr<T>(new T);
         for (std::size_t i = 0; i < std::extent_v<T>; ++i) {

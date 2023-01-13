@@ -445,6 +445,44 @@ TEST(testMakeShared, testArrayCompleteType) {
     EXPECT_EQ(sp_arr.use_count(), 1);
 }
 
+TEST(testMakeShared, testArrayIncompleteTypeDefaultValue) {
+    auto sp_arr = smart_pointer::make_shared<int[]>(2, 5);
+    EXPECT_EQ(sp_arr[0], 5);
+    EXPECT_EQ(sp_arr[1], 5);
+    EXPECT_NO_FATAL_FAILURE(sp_arr[1] = 1);
+    EXPECT_EQ(sp_arr[1], 1);
+    EXPECT_EQ(sp_arr.use_count(), 1);
+
+    auto sp_md_arr = smart_pointer::make_shared<int[][3]>(2, {1, 2, 3});
+
+    EXPECT_EQ(sp_md_arr[0][0], 1);
+    EXPECT_EQ(sp_md_arr[0][1], 2);
+    EXPECT_EQ(sp_md_arr[0][2], 3);
+    EXPECT_EQ(sp_md_arr[1][0], 1);
+    EXPECT_EQ(sp_md_arr[1][1], 2);
+    EXPECT_EQ(sp_md_arr[1][2], 3);
+}
+
+TEST(testMakeShared, testArrayCompleteTypeDefaultValue) {
+    auto sp_arr = smart_pointer::make_shared<int[2]>(5);
+    EXPECT_EQ(sp_arr[0], 5);
+    EXPECT_EQ(sp_arr[1], 5);
+    EXPECT_NO_FATAL_FAILURE(sp_arr[1] = 1);
+    EXPECT_EQ(sp_arr[1], 1);
+    EXPECT_EQ(sp_arr.use_count(), 1);
+
+    auto sp_md_arr = smart_pointer::make_shared<int[3][3]>({1, 2, 3});
+    EXPECT_EQ(sp_md_arr[0][0], 1);
+    EXPECT_EQ(sp_md_arr[0][1], 2);
+    EXPECT_EQ(sp_md_arr[0][2], 3);
+    EXPECT_EQ(sp_md_arr[1][0], 1);
+    EXPECT_EQ(sp_md_arr[1][1], 2);
+    EXPECT_EQ(sp_md_arr[1][2], 3);
+    EXPECT_EQ(sp_md_arr[2][0], 1);
+    EXPECT_EQ(sp_md_arr[2][1], 2);
+    EXPECT_EQ(sp_md_arr[2][2], 3);
+}
+
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
